@@ -388,8 +388,9 @@ impl<'a, T: GitChangeDetector> FilterResolver<'a, T> {
 
         let mut roots = HashSet::new();
         let mut matched = HashSet::new();
-        let changed_packages =
-            self.packages_changed_in_range(&selector.from_ref, selector.to_ref())?;
+        let changed_packages = self
+            .change_detector
+            .changed_packages(&selector.from_ref, selector.to_ref())?;
 
         for package in filtered_entry_packages {
             if matched.contains(&package) {
@@ -440,8 +441,9 @@ impl<'a, T: GitChangeDetector> FilterResolver<'a, T> {
 
         if !selector.from_ref.is_empty() {
             selector_valid = true;
-            let changed_packages =
-                self.packages_changed_in_range(&selector.from_ref, selector.to_ref())?;
+            let changed_packages = self
+                .change_detector
+                .changed_packages(&selector.from_ref, selector.to_ref())?;
             let package_path_lookup = self
                 .pkg_graph
                 .packages()
@@ -510,14 +512,6 @@ impl<'a, T: GitChangeDetector> FilterResolver<'a, T> {
         } else {
             Ok(entry_packages)
         }
-    }
-
-    fn packages_changed_in_range(
-        &self,
-        from_ref: &str,
-        to_ref: &str,
-    ) -> Result<HashSet<PackageName>, ChangeMapError> {
-        self.change_detector.changed_packages(from_ref, to_ref)
     }
 
     fn match_package_names_to_vertices(
