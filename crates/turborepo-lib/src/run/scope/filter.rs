@@ -603,7 +603,6 @@ mod test {
     use test_case::test_case;
     use turbopath::{AbsoluteSystemPathBuf, AnchoredSystemPathBuf, RelativeUnixPathBuf};
     use turborepo_repository::{
-        change_mapper::ChangeMapError,
         discovery::PackageDiscovery,
         package_graph::{PackageGraph, PackageName, ROOT_PKG_NAME},
         package_json::PackageJson,
@@ -611,7 +610,7 @@ mod test {
     };
 
     use super::{FilterResolver, PackageInference, TargetSelector};
-    use crate::run::scope::change_detector::GitChangeDetector;
+    use crate::run::scope::{change_detector::GitChangeDetector, ResolutionError};
 
     fn get_name(name: &str) -> (Option<&str>, &str) {
         if let Some(idx) = name.rfind('/') {
@@ -1174,7 +1173,7 @@ mod test {
             &self,
             from: &str,
             to: &str,
-        ) -> Result<HashSet<PackageName>, ChangeMapError> {
+        ) -> Result<HashSet<PackageName>, ResolutionError> {
             Ok(self
                 .0
                 .get(&(from, to))
