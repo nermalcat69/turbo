@@ -53,6 +53,10 @@ pub enum Error {
         #[label]
         span: SourceSpan,
     },
+    #[error("daemon connection closed")]
+    ConnectionClosed,
+    #[error("watch interrupted due to signal")]
+    SignalInterrupt,
 }
 
 impl WatchClient {
@@ -80,7 +84,7 @@ impl WatchClient {
     pub async fn start(base: CommandBase, telemetry: CommandEventBuilder) -> Result<(), Error> {
         let signal = commands::run::get_signal()?;
         let handler = SignalHandler::new(signal);
-        let Some(subscriber) = handler.subscribe() else {
+        let Some(signal_subscriber) = handler.subscribe() else {
             tracing::warn!("failed to subscribe to signal handler, shutting down");
             return Ok(());
         };
@@ -124,16 +128,20 @@ impl WatchClient {
                 .await?;
             }
 
-            Ok::<(), Error>(())
+            Err(Error::ConnectionClosed)
         };
 
         select! {
-            _ = event_fut => {}
-            _ = subscriber.listen() => {
+            biased;
+            _ = signal_subscriber.listen() => {
                 tracing::info!("shutting down");
+
+                Err(Error::SignalInterrupt)
+            }
+            result = event_fut => {
+                result
             }
         }
-        Ok(())
     }
 
     async fn handle_change_event(
@@ -175,7 +183,7 @@ impl WatchClient {
                 });
 
                 let new_base =
-                    CommandBase::new(args, base.repo_root.clone(), get_version(), base.ui.clone());
+                    CommandBase::new(args, base.repo_root.clone(), get_version(), base.ui);
 
                 // TODO: Add logic on when to abort vs wait
                 if let Some(run) = current_runs.remove(&package_name) {
@@ -211,8 +219,7 @@ impl WatchClient {
                     }
                 });
 
-                let base =
-                    CommandBase::new(args, base.repo_root.clone(), get_version(), base.ui.clone());
+                let base = CommandBase::new(args, base.repo_root.clone(), get_version(), base.ui);
 
                 // When we rediscover, stop all current runs
                 for (_, run) in current_runs.drain() {
@@ -221,7 +228,7 @@ impl WatchClient {
 
                 // rebuild run struct
                 *run = RunBuilder::new(base.clone())?
-                    .build(&handler, telemetry.clone())
+                    .build(handler, telemetry.clone())
                     .await?;
 
                 // Execute run
