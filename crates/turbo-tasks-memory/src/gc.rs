@@ -182,12 +182,6 @@ impl GcQueue {
             let mut stats = GcStats::default();
             let result = self.select_tasks(factor, |task_id, priority, max_priority| {
                 backend.with_task(task_id, |task| {
-                    let _span = tracing::trace_span!(
-                        "task",
-                        name = task.get_description(),
-                        priority = debug(priority)
-                    )
-                    .entered();
                     task.run_gc(
                         now,
                         max_priority,
