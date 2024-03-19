@@ -1730,6 +1730,8 @@ impl Task {
             stats.no_gc_needed += 1;
             return None;
         }
+        let _span = tracing::trace_span!("task", name = self.get_description()).entered();
+
         let mut cells_to_drop = Vec::new();
         // We don't want to access other tasks under this task lock, so we aggregate
         // missing information first, gather it and then retry.

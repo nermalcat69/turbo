@@ -146,6 +146,8 @@ impl MemoryBackend {
             if usage < target {
                 if idle {
                     // Always run propagation when idle
+                    let _span = tracing::trace_span!("idle garbage collection", mem_usage = usage)
+                        .entered();
                     gc_queue.run_gc(0, self, turbo_tasks);
                 }
                 return;
@@ -156,7 +158,14 @@ impl MemoryBackend {
                 (usage - target) * u8::MAX as usize / (mem_limit - target),
             ) as u8;
 
-            let collected = gc_queue.run_gc(collect_factor, self, turbo_tasks);
+            let collected = {
+                let span =
+                    tracing::trace_span!("garbage collection", mem_usage = usage, collect_factor)
+                        .entered();
+                let result = gc_queue.run_gc(collect_factor, self, turbo_tasks);
+                drop(span);
+                result
+            };
 
             if idle {
                 if let Some((_collected, _count, _stats)) = collected {

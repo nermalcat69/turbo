@@ -155,33 +155,38 @@ impl GcQueue {
         turbo_tasks: &dyn TurboTasksBackendApi<MemoryBackend>,
     ) -> Option<(GcPriority, usize, GcStats)> {
         // Process through the inactive propagation queue.
-        while let Ok(task) = self.inactive_propagate_queue.pop() {
-            backend.with_task(task, |task| {
-                task.gc_check_inactive(backend);
-            });
+        {
+            let _span = tracing::trace_span!("check activeness").entered();
+            while let Ok(task) = self.inactive_propagate_queue.pop() {
+                backend.with_task(task, |task| {
+                    task.gc_check_inactive(backend);
+                });
+            }
         }
-
         if factor == 0 {
             return None;
         }
 
         // Process through the gc queue.
-        let now = turbo_tasks.program_duration_until(Instant::now());
-        let mut task_duration_cache = HashMap::with_hasher(BuildNoHashHasher::default());
-        let mut stats = GcStats::default();
-        let result = self.select_tasks(factor, |task_id, _priority, max_priority| {
-            backend.with_task(task_id, |task| {
-                task.run_gc(
-                    now,
-                    max_priority,
-                    &mut task_duration_cache,
-                    &mut stats,
-                    backend,
-                    turbo_tasks,
-                )
-            })
-        });
-        result.map(|(p, c)| (p, c, stats))
+        {
+            let _span = tracing::trace_span!("process tasks").entered();
+            let now = turbo_tasks.program_duration_until(Instant::now());
+            let mut task_duration_cache = HashMap::with_hasher(BuildNoHashHasher::default());
+            let mut stats = GcStats::default();
+            let result = self.select_tasks(factor, |task_id, _priority, max_priority| {
+                backend.with_task(task_id, |task| {
+                    task.run_gc(
+                        now,
+                        max_priority,
+                        &mut task_duration_cache,
+                        &mut stats,
+                        backend,
+                        turbo_tasks,
+                    )
+                })
+            });
+            result.map(|(p, c)| (p, c, stats))
+        }
     }
 
     /// Select a number of tasks to run garbage collection on and run the
