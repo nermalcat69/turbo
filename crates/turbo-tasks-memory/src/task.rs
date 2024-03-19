@@ -543,6 +543,7 @@ impl Task {
             aggregation_context.aggregation_info(id).lock().root_type = None;
         }
         aggregation_context.apply_queued_updates();
+        backend.on_task_might_become_inactive(id);
     }
 
     pub(crate) fn get_function_name(&self) -> Option<Cow<'static, str>> {
@@ -1001,13 +1002,15 @@ impl Task {
                         let outdated_children = take(outdated_children);
                         let outdated_collectibles = outdated_collectibles.take_collectibles();
                         let mut dependencies = take(&mut dependencies);
-                        // This will stay here for longer, so make sure to not consume too much
-                        // memory
-                        dependencies.shrink_to_fit();
-                        for cells in state.cells.values_mut() {
-                            cells.shrink_to_fit();
+                        if !backend.has_gc() {
+                            // This will stay here for longer, so make sure to not consume too much
+                            // memory
+                            dependencies.shrink_to_fit();
+                            for cells in state.cells.values_mut() {
+                                cells.shrink_to_fit();
+                            }
+                            state.cells.shrink_to_fit();
                         }
-                        state.cells.shrink_to_fit();
                         state.stateful = stateful;
                         state.state_type = Done { dependencies };
                         if !count_as_finished {
@@ -1074,6 +1077,7 @@ impl Task {
                 .aggregation_info(self.id)
                 .lock()
                 .root_type = None;
+            backend.on_task_might_become_inactive(self.id);
         }
         aggregation_context.apply_queued_updates();
 
@@ -1539,6 +1543,8 @@ impl Task {
                     } = &mut state.state_type
                     {
                         if outdated_children.remove(&child_id) {
+                            drop(state);
+                            aggregation_context.apply_queued_updates();
                             return;
                         }
                     }
@@ -1611,6 +1617,7 @@ impl Task {
                     Some(RootType::ReadingStronglyConsistent)
                 ) {
                     aggregation.root_type = None;
+                    backend.on_task_might_become_inactive(self.id);
                 }
             }
         }
@@ -1711,16 +1718,19 @@ impl Task {
         aggregation_context.apply_queued_updates();
     }
 
-    pub(crate) fn gc_check_inactive(&self, backend: &MemoryBackend) {
+    pub(crate) fn gc_check_inactive(&self, backend: &MemoryBackend) -> bool {
         if let TaskMetaStateWriteGuard::Full(mut state) = self.state_mut() {
             if state.gc.inactive {
-                return;
+                return false;
             }
             state.gc.inactive = true;
             backend.on_task_flagged_inactive(self.id, state.stats.last_duration());
             for &child in state.children.iter() {
                 backend.on_task_might_become_inactive(child);
             }
+            true
+        } else {
+            false
         }
     }
 
@@ -1777,21 +1787,22 @@ impl Task {
                 }
 
                 // Check if the task need to be activated again
-                let active = if state.gc.inactive {
-                    let _span = tracing::trace_span!("check active").entered();
-                    let active = state.aggregation_leaf.get_root_info(
-                        &TaskAggregationContext::new(turbo_tasks, backend),
-                        &RootInfoType::IsActive,
-                    );
-                    if active {
-                        state.gc.inactive = false;
-                        true
-                    } else {
-                        false
-                    }
-                } else {
-                    true
-                };
+                // let active = if state.gc.inactive {
+                //     let _span = tracing::trace_span!("check active").entered();
+                //     let active = state.aggregation_leaf.get_root_info(
+                //         &TaskAggregationContext::new(turbo_tasks, backend),
+                //         &RootInfoType::IsActive,
+                //     );
+                //     if active {
+                //         state.gc.inactive = false;
+                //         true
+                //     } else {
+                //         false
+                //     }
+                // } else {
+                //     true
+                // };
+                let active = !state.gc.inactive;
 
                 let last_duration = state.stats.last_duration();
                 let compute_duration = last_duration.into();
@@ -1903,7 +1914,7 @@ impl Task {
                     // new GC priority.
                     if missing_durations.is_empty() {
                         let mut new_priority = GcPriority::Placeholder;
-                        const UNLOAD: bool = false;
+                        const UNLOAD: bool = true;
                         const EMPTY_CELLS: bool = true;
                         const EMPTY_UNUSED_CELLS: bool = true;
                         if UNLOAD && !active {
@@ -1918,7 +1929,7 @@ impl Task {
                                     stats.unloaded += 1;
                                     return None;
                                 } else {
-                                    // unloading will fail if the task go active again
+                                    // unloading failed (maybe the task did go active again)
                                     return Some(GcPriority::EmptyCells {
                                         total_compute_duration,
                                         last_access,
@@ -1929,7 +1940,10 @@ impl Task {
 
                         // always shrinking memory
                         state.output.dependent_tasks.shrink_to_fit();
-                        if EMPTY_CELLS && (has_unused_cells || has_used_cells) {
+                        if EMPTY_CELLS
+                            && matches!(new_priority, GcPriority::Placeholder)
+                            && (has_unused_cells || has_used_cells)
+                        {
                             new_priority = GcPriority::EmptyCells {
                                 total_compute_duration,
                                 last_access,
@@ -1953,7 +1967,10 @@ impl Task {
 
                         // always shrinking memory
                         state.cells.shrink_to_fit();
-                        if EMPTY_UNUSED_CELLS && has_unused_cells {
+                        if EMPTY_UNUSED_CELLS
+                            && matches!(new_priority, GcPriority::Placeholder)
+                            && has_unused_cells
+                        {
                             new_priority = empty_unused_priority;
                             if new_priority <= max_priority {
                                 // Empty unused cells
@@ -1985,7 +2002,7 @@ impl Task {
                         }
 
                         // Return new gc priority if any
-                        if new_priority != GcPriority::Placeholder {
+                        if matches!(new_priority, GcPriority::Placeholder) {
                             stats.priority_updated += 1;
 
                             return Some(new_priority);
@@ -2018,19 +2035,20 @@ impl Task {
         backend: &MemoryBackend,
         turbo_tasks: &dyn TurboTasksBackendApi<MemoryBackend>,
     ) -> bool {
+        let mut aggregation_context = TaskAggregationContext::new(turbo_tasks, backend);
         let mut clear_dependencies = None;
         let TaskState {
             ref mut aggregation_leaf,
             ref mut state_type,
+            ref mut gc,
             ..
         } = *full_state;
         match state_type {
             Done {
                 ref mut dependencies,
             } => {
-                let mut aggregation_context = TaskAggregationContext::new(turbo_tasks, backend);
                 aggregation_leaf.change(
-                    &TaskAggregationContext::new(turbo_tasks, backend),
+                    &aggregation_context,
                     &TaskChange {
                         unfinished: 1,
                         dirty_tasks_update: vec![(self.id, 1)],
@@ -2041,13 +2059,16 @@ impl Task {
                     // Unloading is only possible for inactive tasks.
                     // We need to abort the unloading, so revert changes done so far.
                     aggregation_leaf.change(
-                        &TaskAggregationContext::new(turbo_tasks, backend),
+                        &aggregation_context,
                         &TaskChange {
                             unfinished: -1,
                             dirty_tasks_update: vec![(self.id, -1)],
                             ..Default::default()
                         },
                     );
+                    gc.inactive = false;
+                    drop(full_state);
+                    aggregation_context.apply_queued_updates();
                     return false;
                 }
                 clear_dependencies = Some(take(dependencies));
@@ -2059,10 +2080,7 @@ impl Task {
                 // We want to get rid of this Event, so notify it to make sure it's empty.
                 event.notify(usize::MAX);
                 if !outdated_dependencies.is_empty() {
-                    // TODO we need to find a way to handle this case without introducting a race
-                    // condition
-
-                    return false;
+                    clear_dependencies = Some(take(outdated_dependencies));
                 }
             }
             _ => {
@@ -2096,8 +2114,6 @@ impl Task {
             // can be dropped as only gc meta info
             gc: _,
         } = old_state.into_full().unwrap();
-
-        let aggregation_context = TaskAggregationContext::new(turbo_tasks, backend);
 
         // Remove all children, as they will be added again when this task is executed
         // again
@@ -2149,10 +2165,14 @@ impl Task {
         }
         output.gc_drop(turbo_tasks);
 
-        // We can clear the dependencies as we are already marked as dirty
+        // TODO This is a race condition, the task might be executed again while
+        // removing dependencies We can clear the dependencies as we are already
+        // marked as dirty
         if let Some(dependencies) = clear_dependencies {
             self.clear_dependencies(dependencies, backend, turbo_tasks);
         }
+
+        aggregation_context.apply_queued_updates();
 
         true
     }

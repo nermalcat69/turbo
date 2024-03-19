@@ -90,6 +90,10 @@ impl MemoryBackend {
         id
     }
 
+    pub(crate) fn has_gc(&self) -> bool {
+        self.gc_queue.is_some()
+    }
+
     fn try_get_output<T, F: FnOnce(&mut Output) -> Result<T>>(
         &self,
         id: TaskId,
@@ -175,7 +179,10 @@ impl MemoryBackend {
             let new_usage = turbo_tasks_malloc::TurboMalloc::memory_usage();
 
             if new_usage > usage {
-                println!("GC allocated {} more MB", (new_usage - usage) / 1024 / 1024);
+                println!(
+                    "GC allocated {} more MB {collected:?}",
+                    (new_usage - usage) / 1024 / 1024
+                );
             } else if new_usage < target {
                 println!(
                     "GC collected {} MB ({} MB below target) {collected:?}",

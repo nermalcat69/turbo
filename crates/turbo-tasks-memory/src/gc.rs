@@ -7,7 +7,7 @@ use std::{
 
 use concurrent_queue::ConcurrentQueue;
 use nohash_hasher::BuildNoHashHasher;
-use tracing::field::{debug, Empty};
+use tracing::field::{debug, Empty, Field};
 use turbo_tasks::{
     pico_duration::PicoDuration, small_duration::SmallDuration, TaskId, TurboTasksBackendApi,
 };
@@ -207,12 +207,21 @@ impl GcQueue {
     ) -> Option<(GcPriority, usize, GcStats)> {
         // Process through the inactive propagation queue.
         {
-            let _span = tracing::trace_span!("check activeness").entered();
+            let span =
+                tracing::trace_span!("check activeness", count = Empty, new_inactive = Empty)
+                    .entered();
+            let mut count = 0;
+            let mut new_inactive = 0;
             while let Ok(task) = self.inactive_propagate_queue.pop() {
+                count += 1;
                 backend.with_task(task, |task| {
-                    task.gc_check_inactive(backend);
+                    if task.gc_check_inactive(backend) {
+                        new_inactive += 1;
+                    }
                 });
             }
+            span.record("count", count);
+            span.record("new_inactive", new_inactive);
         }
         if factor == 0 {
             return None;
