@@ -1790,20 +1790,18 @@ impl Task {
                 let last_duration = state.stats.last_duration();
                 let compute_duration = last_duration.into();
 
-                let age = to_exp_u8(
-                    (now_relative_to_start
-                        .saturating_sub(state.stats.last_execution_relative_to_start()))
-                    .as_secs(),
-                );
+                let age = now_relative_to_start
+                    .saturating_sub(state.stats.last_execution_relative_to_start());
+                let age = age.into();
 
                 let min_prio_that_needs_total_duration = if active {
                     GcPriority::EmptyCells {
-                        total_compute_duration: to_exp_u8(last_duration.as_millis() as u64),
+                        total_compute_duration: last_duration.into(),
                         age: Reverse(age),
                     }
                 } else {
                     GcPriority::InactiveUnload {
-                        total_compute_duration: to_exp_u8(last_duration.as_millis() as u64),
+                        total_compute_duration: last_duration.into(),
                         age: Reverse(age),
                     }
                 };
@@ -1839,9 +1837,7 @@ impl Task {
                             }
                             stats.empty_unused_fast += 1;
                             return Some(GcPriority::EmptyCells {
-                                total_compute_duration: to_exp_u8(
-                                    Duration::from(compute_duration).as_millis() as u64,
-                                ),
+                                total_compute_duration: Duration::from(compute_duration).into(),
                                 age: Reverse(age),
                             });
                         } else {
@@ -1851,17 +1847,13 @@ impl Task {
                     } else if active {
                         stats.priority_updated += 1;
                         return Some(GcPriority::EmptyCells {
-                            total_compute_duration: to_exp_u8(
-                                Duration::from(compute_duration).as_millis() as u64,
-                            ),
+                            total_compute_duration: Duration::from(compute_duration).into(),
                             age: Reverse(age),
                         });
                     } else {
                         stats.priority_updated += 1;
                         return Some(GcPriority::InactiveUnload {
-                            total_compute_duration: to_exp_u8(
-                                Duration::from(compute_duration).as_millis() as u64,
-                            ),
+                            total_compute_duration: Duration::from(compute_duration).into(),
                             age: Reverse(age),
                         });
                     }
@@ -1900,8 +1892,7 @@ impl Task {
 
                     let total_compute_duration =
                         max(last_duration, dependent_tasks_compute_duration);
-                    let total_compute_duration_u8 =
-                        to_exp_u8(total_compute_duration.as_millis() as u64);
+                    let total_compute_duration = total_compute_duration.into();
 
                     // When we have all information available, we can either run the GC or return a
                     // new GC priority.
@@ -1910,7 +1901,7 @@ impl Task {
                         if !active {
                             new_priority = GcPriority::InactiveUnload {
                                 age: Reverse(age),
-                                total_compute_duration: total_compute_duration_u8,
+                                total_compute_duration,
                             };
                             if new_priority <= max_priority {
                                 // Unload task
@@ -1921,7 +1912,7 @@ impl Task {
                                 } else {
                                     // unloading will fail if the task go active again
                                     return Some(GcPriority::EmptyCells {
-                                        total_compute_duration: total_compute_duration_u8,
+                                        total_compute_duration,
                                         age: Reverse(age),
                                     });
                                 }
@@ -1932,7 +1923,7 @@ impl Task {
                         state.output.dependent_tasks.shrink_to_fit();
                         if active && (has_unused_cells || has_used_cells) {
                             new_priority = GcPriority::EmptyCells {
-                                total_compute_duration: total_compute_duration_u8,
+                                total_compute_duration,
                                 age: Reverse(age),
                             };
                             if new_priority <= max_priority {
@@ -1970,7 +1961,7 @@ impl Task {
                                 }
                                 stats.empty_unused += 1;
                                 return Some(GcPriority::EmptyCells {
-                                    total_compute_duration: total_compute_duration_u8,
+                                    total_compute_duration,
                                     age: Reverse(age),
                                 });
                             }

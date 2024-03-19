@@ -1,6 +1,7 @@
 use std::{
     cmp::Reverse,
     collections::HashMap,
+    fmt::Debug,
     time::{Duration, Instant},
 };
 
@@ -10,6 +11,55 @@ use tracing::field::{debug, Empty};
 use turbo_tasks::{small_duration::SmallDuration, TaskId, TurboTasksBackendApi};
 
 use crate::{concurrent_priority_queue::ConcurrentPriorityQueue, MemoryBackend};
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+pub struct ExpMillisDuration(u8);
+
+impl From<Duration> for ExpMillisDuration {
+    fn from(duration: Duration) -> Self {
+        Self(
+            (duration.as_millis() as u64)
+                .checked_next_power_of_two()
+                .unwrap_or(0x7000_0000_0000_0000)
+                .trailing_zeros() as u8,
+        )
+    }
+}
+
+impl Debug for ExpMillisDuration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0 == 0 {
+            write!(f, "0-1ms")
+        } else {
+            write!(f, "{}-{}ms", 1 << (self.0 as u64 - 1), 1 << (self.0 as u64))
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+pub struct ExpSecondsDuration(u8);
+
+impl From<Duration> for ExpSecondsDuration {
+    fn from(duration: Duration) -> Self {
+        Self(
+            duration
+                .as_secs()
+                .checked_next_power_of_two()
+                .unwrap_or(0x7000_0000_0000_0000)
+                .trailing_zeros() as u8,
+        )
+    }
+}
+
+impl Debug for ExpSecondsDuration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0 == 0 {
+            write!(f, "0-1s")
+        } else {
+            write!(f, "{}-{}s", 1 << (self.0 as u64 - 1), 1 << (self.0 as u64))
+        }
+    }
+}
 
 /// The priority of a task for garbage collection.
 /// Any action will shrink the internal memory structures of the task in a
@@ -26,10 +76,10 @@ pub enum GcPriority {
     InactiveUnload {
         /// The age of the task. Stored as 2^x seconds to
         /// bucket tasks and avoid frequent revalidation.
-        age: Reverse<u8>,
+        age: Reverse<ExpSecondsDuration>,
         /// Aggregated recompute time. Stored as 2^x milliseconds to bucket
         /// tasks and avoid frequent revalidation.
-        total_compute_duration: u8,
+        total_compute_duration: ExpMillisDuration,
     },
     /// Unload cells that are currently not read by any task. This might cause
     /// the task to recompute when these cells are read.
@@ -41,10 +91,10 @@ pub enum GcPriority {
     EmptyCells {
         /// Aggregated recompute time. Stored as 2^x milliseconds to bucket
         /// tasks and avoid frequent revalidation.
-        total_compute_duration: u8,
+        total_compute_duration: ExpMillisDuration,
         /// The age of the task. Stored as 2^x seconds to
         /// bucket tasks and avoid frequent revalidation.
-        age: Reverse<u8>,
+        age: Reverse<ExpSecondsDuration>,
     },
     Placeholder,
 }
@@ -234,12 +284,4 @@ impl GcQueue {
         }
         Some((highest_priority, len))
     }
-}
-
-/// Converts a value to an logarithmic scale.
-pub fn to_exp_u8(value: u64) -> u8 {
-    value
-        .checked_next_power_of_two()
-        .unwrap_or(0x7000_0000_0000_0000)
-        .trailing_zeros() as u8
 }
