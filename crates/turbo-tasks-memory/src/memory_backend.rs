@@ -172,7 +172,8 @@ impl MemoryBackend {
                 result
             };
 
-            collected.is_some()
+            // Collecting less than 100 tasks is not worth it
+            collected.map_or(false, |(_, count, _)| count > 100)
         } else {
             false
         }
