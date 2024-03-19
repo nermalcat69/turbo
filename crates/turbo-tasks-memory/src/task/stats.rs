@@ -41,10 +41,23 @@ impl TaskStats {
             Self::Full(stats) => {
                 stats.total_duration += duration;
                 stats.last_duration = duration;
+                stats.last_access_relative_to_start = duration_since_start.into();
             }
             Self::Essential(stats) => {
                 stats.last_duration = duration.into();
-                stats.last_execution_relative_to_start = duration_since_start.into();
+                stats.last_access_relative_to_start = duration_since_start.into();
+            }
+        }
+    }
+
+    /// Registers a task read.
+    pub fn register_read(&mut self, duration_since_start: Duration) {
+        match self {
+            Self::Full(stats) => {
+                stats.last_access_relative_to_start = duration_since_start.into();
+            }
+            Self::Essential(stats) => {
+                stats.last_access_relative_to_start = duration_since_start.into();
             }
         }
     }
@@ -59,7 +72,7 @@ impl TaskStats {
             }
             Self::Essential(stats) => {
                 stats.last_duration = SmallDuration::MIN;
-                stats.last_execution_relative_to_start = SmallDuration::MIN;
+                stats.last_access_relative_to_start = SmallDuration::MIN;
             }
         }
     }
@@ -74,10 +87,10 @@ impl TaskStats {
 
     /// Returns the last execution of the task relative to the start of the
     /// program.
-    pub fn last_execution_relative_to_start(&self) -> Duration {
+    pub fn last_access_relative_to_start(&self) -> Duration {
         match self {
-            Self::Full(stats) => stats.last_execution_relative_to_start(),
-            Self::Essential(stats) => stats.last_execution_relative_to_start(),
+            Self::Full(stats) => stats.last_access_relative_to_start(),
+            Self::Essential(stats) => stats.last_access_relative_to_start(),
         }
     }
 }
@@ -86,9 +99,9 @@ impl TaskStats {
 pub struct TaskStatsEssential {
     /// The last duration of the task, with a precision of 10 microseconds.
     last_duration: SmallDuration<10_000>,
-    /// The last execution of the task relative to the start of the program,
-    /// with a precision of 1 millisecond.
-    last_execution_relative_to_start: SmallDuration<1_000_000>,
+    /// The last execution or read of the task relative to the start of the
+    /// program, with a precision of 1 millisecond.
+    last_access_relative_to_start: SmallDuration<1_000_000>,
 }
 
 impl TaskStatsEssential {
@@ -97,11 +110,10 @@ impl TaskStatsEssential {
         self.last_duration.into()
     }
 
-    /// Returns the last execution of the task relative to the start of the
-    /// program.
-    #[allow(dead_code)] // NOTE(alexkirsz) This will be useful for GC.
-    pub fn last_execution_relative_to_start(&self) -> Duration {
-        self.last_execution_relative_to_start.into()
+    /// Returns the last execution or read of the task relative to the start of
+    /// the program.
+    pub fn last_access_relative_to_start(&self) -> Duration {
+        self.last_access_relative_to_start.into()
     }
 }
 
@@ -113,9 +125,9 @@ pub struct TaskStatsFull {
     last_duration: Duration,
     /// The total duration of the task.
     total_duration: Duration,
-    /// The last execution of the task relative to the start of the program,
-    /// with a precision of 1 millisecond.
-    last_execution_relative_to_start: SmallDuration<1_000_000>,
+    /// The last execution or read of the task relative to the start of the
+    /// program, with a precision of 1 millisecond.
+    last_access_relative_to_start: SmallDuration<1_000_000>,
 }
 
 impl TaskStatsFull {
@@ -134,10 +146,9 @@ impl TaskStatsFull {
         self.total_duration
     }
 
-    /// Returns the last execution of the task relative to the start of the
-    /// program.
-    #[allow(dead_code)] // NOTE(alexkirsz) This will be useful for GC.
-    pub fn last_execution_relative_to_start(&self) -> Duration {
-        self.last_execution_relative_to_start.into()
+    /// Returns the last execution or read of the task relative to the start of
+    /// the program.
+    pub fn last_access_relative_to_start(&self) -> Duration {
+        self.last_access_relative_to_start.into()
     }
 }

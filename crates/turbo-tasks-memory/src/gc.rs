@@ -8,7 +8,9 @@ use std::{
 use concurrent_queue::ConcurrentQueue;
 use nohash_hasher::BuildNoHashHasher;
 use tracing::field::{debug, Empty};
-use turbo_tasks::{small_duration::SmallDuration, TaskId, TurboTasksBackendApi};
+use turbo_tasks::{
+    pico_duration::PicoDuration, small_duration::SmallDuration, TaskId, TurboTasksBackendApi,
+};
 
 use crate::{concurrent_priority_queue::ConcurrentPriorityQueue, MemoryBackend};
 
@@ -74,9 +76,8 @@ pub enum GcPriority {
     },
     /// Unload the whole task. Only available for inactive tasks.
     InactiveUnload {
-        /// The age of the task. Stored as 2^x seconds to
-        /// bucket tasks and avoid frequent revalidation.
-        age: Reverse<ExpSecondsDuration>,
+        /// The last access of the task.
+        last_access: PicoDuration<1_000>,
         /// Aggregated recompute time. Stored as 2^x milliseconds to bucket
         /// tasks and avoid frequent revalidation.
         total_compute_duration: ExpMillisDuration,
@@ -92,9 +93,8 @@ pub enum GcPriority {
         /// Aggregated recompute time. Stored as 2^x milliseconds to bucket
         /// tasks and avoid frequent revalidation.
         total_compute_duration: ExpMillisDuration,
-        /// The age of the task. Stored as 2^x seconds to
-        /// bucket tasks and avoid frequent revalidation.
-        age: Reverse<ExpSecondsDuration>,
+        /// The last access of the task.
+        last_access: PicoDuration<1_000>,
     },
     Placeholder,
 }
@@ -181,12 +181,12 @@ impl GcQueue {
                         })
                     }
                     GcPriority::EmptyCells {
-                        age,
+                        last_access,
                         total_compute_duration,
                     } => {
                         // Convert to the higher priority inactive version.
                         *value = Reverse(GcPriority::InactiveUnload {
-                            age: *age,
+                            last_access: *last_access,
                             total_compute_duration: *total_compute_duration,
                         })
                     }

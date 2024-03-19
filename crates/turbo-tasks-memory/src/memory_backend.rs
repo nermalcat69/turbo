@@ -418,7 +418,9 @@ impl Backend for MemoryBackend {
         } else {
             Task::add_dependency_to_current(TaskDependency::Cell(task_id, index));
             self.with_task(task_id, |task| {
-                match task.with_cell_mut(index, |cell| {
+                // TODO Avoid Instant::now infavor of a thread local.
+                let duration_since_start = turbo_tasks.program_duration_until(Instant::now());
+                match task.with_cell_mut(index, duration_since_start, |cell| {
                     cell.read_content(
                         reader,
                         move || format!("{task_id} {index}"),
@@ -455,7 +457,9 @@ impl Backend for MemoryBackend {
         turbo_tasks: &dyn TurboTasksBackendApi<MemoryBackend>,
     ) -> Result<Result<CellContent, EventListener>> {
         self.with_task(task_id, |task| {
-            match task.with_cell_mut(index, |cell| {
+            // TODO Avoid Instant::now infavor of a thread local.
+            let duration_since_start = turbo_tasks.program_duration_until(Instant::now());
+            match task.with_cell_mut(index, duration_since_start, |cell| {
                 cell.read_content_untracked(
                     move || format!("{task_id}"),
                     move || format!("reading {} {} untracked", task_id, index),
@@ -515,7 +519,11 @@ impl Backend for MemoryBackend {
         turbo_tasks: &dyn TurboTasksBackendApi<MemoryBackend>,
     ) {
         self.with_task(task, |task| {
-            task.with_cell_mut(index, |cell| cell.assign(content, turbo_tasks))
+            // TODO Avoid Instant::now infavor of a thread local.
+            let duration_since_start = turbo_tasks.program_duration_until(Instant::now());
+            task.with_cell_mut(index, duration_since_start, |cell| {
+                cell.assign(content, turbo_tasks)
+            })
         })
     }
 
