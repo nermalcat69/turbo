@@ -131,26 +131,31 @@ impl MemoryBackend {
         }
     }
 
-    pub fn run_gc(&self, idle: bool, turbo_tasks: &dyn TurboTasksBackendApi<MemoryBackend>) {
+    pub fn run_gc(
+        &self,
+        force: bool,
+        turbo_tasks: &dyn TurboTasksBackendApi<MemoryBackend>,
+    ) -> bool {
         if let Some(gc_queue) = &self.gc_queue {
             const MAX_COLLECT_FACTOR: u8 = u8::MAX / 8;
 
             let mem_limit = self.memory_limit;
 
             let usage = turbo_tasks_malloc::TurboMalloc::memory_usage();
-            let target = if idle {
+            let target = if force {
                 mem_limit * 3 / 4
             } else {
                 mem_limit * 7 / 8
             };
             if usage < target {
-                if idle {
+                if force {
                     // Always run propagation when idle
                     let _span = tracing::trace_span!("idle garbage collection", mem_usage = usage)
                         .entered();
-                    gc_queue.run_gc(0, self, turbo_tasks);
+                    return gc_queue.run_gc(0, self, turbo_tasks).is_some();
+                } else {
+                    return false;
                 }
-                return;
             }
 
             let collect_factor = min(
@@ -167,14 +172,9 @@ impl MemoryBackend {
                 result
             };
 
-            if idle {
-                if let Some((_collected, _count, _stats)) = collected {
-                    let job = self.create_backend_job(Job::GarbageCollection);
-                    turbo_tasks.schedule_backend_background_job(job);
-                } else {
-                    self.idle_gc_active.store(false, Ordering::Release);
-                }
-            }
+            collected.is_some()
+        } else {
+            false
         }
     }
 
@@ -340,7 +340,7 @@ impl Backend for MemoryBackend {
             )
         });
         if !reexecute {
-            self.run_gc(false, turbo_tasks);
+            // self.run_gc(false, turbo_tasks);
             if let Some(gc_queue) = &self.gc_queue {
                 gc_queue.task_executed(task_id, duration);
             }
@@ -619,7 +619,12 @@ impl Job {
         match self {
             Job::GarbageCollection => {
                 let _guard = trace_span!("Job::GarbageCollection").entered();
-                backend.run_gc(true, turbo_tasks);
+                if backend.run_gc(true, turbo_tasks) {
+                    let job = backend.create_backend_job(Job::GarbageCollection);
+                    turbo_tasks.schedule_backend_background_job(job);
+                } else {
+                    backend.idle_gc_active.store(false, Ordering::Release);
+                }
             }
         }
     }
