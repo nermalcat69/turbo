@@ -56,6 +56,7 @@ mod native_function;
 mod no_move_vec;
 mod once_map;
 pub mod persisted_graph;
+pub mod pico_duration;
 pub mod primitives;
 mod raw_vc;
 mod raw_vc_set;
