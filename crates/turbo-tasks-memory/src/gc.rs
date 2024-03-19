@@ -6,6 +6,7 @@ use std::{
 
 use concurrent_queue::ConcurrentQueue;
 use nohash_hasher::BuildNoHashHasher;
+use tracing::field::{debug, Empty};
 use turbo_tasks::{small_duration::SmallDuration, TaskId, TurboTasksBackendApi};
 
 use crate::{concurrent_priority_queue::ConcurrentPriorityQueue, MemoryBackend};
@@ -169,7 +170,13 @@ impl GcQueue {
 
         // Process through the gc queue.
         {
-            let _span = tracing::trace_span!("process tasks").entered();
+            let span = tracing::trace_span!(
+                "process tasks",
+                stats = Empty,
+                priority = Empty,
+                count = Empty
+            )
+            .entered();
             let now = turbo_tasks.program_duration_until(Instant::now());
             let mut task_duration_cache = HashMap::with_hasher(BuildNoHashHasher::default());
             let mut stats = GcStats::default();
@@ -191,6 +198,15 @@ impl GcQueue {
                     )
                 })
             });
+            if let Some((priority, len)) = &result {
+                span.record("priority", debug(priority));
+                span.record("stats", debug(&stats));
+                span.record("count", len);
+            } else {
+                span.record("priority", &"");
+                span.record("stats", &"");
+                span.record("count", &0);
+            }
             result.map(|(p, c)| (p, c, stats))
         }
     }
