@@ -196,7 +196,7 @@ impl<'a> TaskAggregationContext<'a> {
     }
 }
 
-#[cfg(debug_assertions)]
+// #[cfg(debug_assertions)]
 impl<'a> Drop for TaskAggregationContext<'a> {
     fn drop(&mut self) {
         let tasks_to_schedule = self.dirty_tasks_to_schedule.get_mut();
