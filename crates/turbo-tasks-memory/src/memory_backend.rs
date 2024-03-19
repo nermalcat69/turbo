@@ -243,14 +243,14 @@ impl MemoryBackend {
 
 impl Backend for MemoryBackend {
     fn idle_start(&self, turbo_tasks: &dyn TurboTasksBackendApi<MemoryBackend>) {
-        if self
-            .idle_gc_active
-            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
-            .is_ok()
-        {
-            let job = self.create_backend_job(Job::GarbageCollection);
-            turbo_tasks.schedule_backend_background_job(job);
-        }
+        // if self
+        //     .idle_gc_active
+        //     .compare_exchange(false, true, Ordering::AcqRel,
+        // Ordering::Acquire)     .is_ok()
+        // {
+        //     let job = self.create_backend_job(Job::GarbageCollection);
+        //     turbo_tasks.schedule_backend_background_job(job);
+        // }
     }
 
     fn invalidate_task(&self, task: TaskId, turbo_tasks: &dyn TurboTasksBackendApi<MemoryBackend>) {
