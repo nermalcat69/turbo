@@ -780,14 +780,14 @@ impl Task {
                 PersistentTaskType::Native(native_fn, inputs) => {
                     let result =
                         if let PrepareTaskType::Native(func, bound_fn) = &state.prepared_type {
-                            let span = func.span();
+                            let span = func.span(self.id);
                             let entered = span.enter();
                             let future = bound_fn();
                             drop(entered);
                             (future, span)
                         } else {
                             let func = registry::get_function(*native_fn);
-                            let span = func.span();
+                            let span = func.span(self.id);
                             let entered = span.enter();
                             let bound_fn = func.bind(inputs);
                             let future = bound_fn();
@@ -801,11 +801,11 @@ impl Task {
                 PersistentTaskType::ResolveNative(ref native_fn_id, inputs) => {
                     let native_fn_id = *native_fn_id;
                     let span = if let &PrepareTaskType::Resolve(func) = &state.prepared_type {
-                        func.resolve_span()
+                        func.resolve_span(self.id)
                     } else {
                         let func = registry::get_function(native_fn_id);
                         state.prepared_type = PrepareTaskType::Resolve(func);
-                        func.resolve_span()
+                        func.resolve_span(self.id)
                     };
                     drop(state);
                     let entered = span.enter();
@@ -1320,6 +1320,7 @@ impl Task {
         backend: &MemoryBackend,
         turbo_tasks: &dyn TurboTasksBackendApi<MemoryBackend>,
     ) {
+        let _span = tracing::trace_span!("turbo_tasks::recompute", id = *self.id).entered();
         self.make_dirty_internal(true, backend, turbo_tasks)
     }
 

@@ -3,10 +3,11 @@ use std::{fmt::Debug, hash::Hash};
 use tracing::Span;
 
 use crate::{
+    self as turbo_tasks,
     registry::register_function,
     task::{function::NativeTaskFn, IntoTaskFn, TaskFn},
     util::SharedError,
-    ConcreteTaskInput, {self as turbo_tasks},
+    ConcreteTaskInput, TaskId,
 };
 
 /// A native (rust) turbo-tasks function. It's used internally by
@@ -54,12 +55,16 @@ impl NativeFunction {
         }
     }
 
-    pub fn span(&'static self) -> Span {
-        tracing::trace_span!("turbo_tasks::function", name = self.name.as_str())
+    pub fn span(&'static self, id: TaskId) -> Span {
+        tracing::trace_span!("turbo_tasks::function", name = self.name.as_str(), id = *id)
     }
 
-    pub fn resolve_span(&'static self) -> Span {
-        tracing::trace_span!("turbo_tasks::resolve_call", name = self.name.as_str())
+    pub fn resolve_span(&'static self, id: TaskId) -> Span {
+        tracing::trace_span!(
+            "turbo_tasks::resolve_call",
+            name = self.name.as_str(),
+            id = *id
+        )
     }
 
     pub fn register(&'static self, global_name: &'static str) {
