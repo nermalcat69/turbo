@@ -37,7 +37,7 @@ use turbo_tasks::{
 use crate::{
     aggregation_tree::{aggregation_info, ensure_thresholds, AggregationInfoGuard},
     cell::Cell,
-    gc::{to_exp_u8, GcPriority, GcStats, GcTaskState},
+    gc::{GcPriority, GcStats, GcTaskState},
     output::{Output, OutputContent},
     stats::{ReferenceType, StatsReferences, StatsTaskType},
     task::aggregation::{TaskAggregationContext, TaskChange},
@@ -1728,7 +1728,7 @@ impl Task {
         turbo_tasks: &dyn TurboTasksBackendApi<MemoryBackend>,
     ) -> Option<GcPriority> {
         if !self.is_pure() {
-            stats.no_gc_needed += 1;
+            stats.no_gc_possible += 1;
             return None;
         }
 
@@ -1765,7 +1765,7 @@ impl Task {
                     _ => {
                         // GC can't run in this state. We will reschedule it when the execution
                         // completes.
-                        stats.no_gc_needed += 1;
+                        stats.no_gc_possible += 1;
                         return None;
                     }
                 }
@@ -1898,7 +1898,10 @@ impl Task {
                     // new GC priority.
                     if missing_durations.is_empty() {
                         let mut new_priority = GcPriority::Placeholder;
-                        if !active {
+                        const UNLOAD: bool = false;
+                        const EMPTY_CELLS: bool = true;
+                        const EMPTY_UNUSED_CELLS: bool = true;
+                        if UNLOAD && !active {
                             new_priority = GcPriority::InactiveUnload {
                                 age: Reverse(age),
                                 total_compute_duration,
@@ -1921,7 +1924,7 @@ impl Task {
 
                         // always shrinking memory
                         state.output.dependent_tasks.shrink_to_fit();
-                        if active && (has_unused_cells || has_used_cells) {
+                        if EMPTY_CELLS && (has_unused_cells || has_used_cells) {
                             new_priority = GcPriority::EmptyCells {
                                 total_compute_duration,
                                 age: Reverse(age),
@@ -1945,7 +1948,7 @@ impl Task {
 
                         // always shrinking memory
                         state.cells.shrink_to_fit();
-                        if has_unused_cells && active {
+                        if EMPTY_UNUSED_CELLS && has_unused_cells {
                             new_priority = empty_unused_priority;
                             if new_priority <= max_priority {
                                 // Empty unused cells
