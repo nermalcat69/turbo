@@ -1730,7 +1730,6 @@ impl Task {
             stats.no_gc_needed += 1;
             return None;
         }
-        let _span = tracing::trace_span!("task", name = self.get_description()).entered();
 
         let mut cells_to_drop = Vec::new();
         // We don't want to access other tasks under this task lock, so we aggregate
@@ -1758,6 +1757,7 @@ impl Task {
                 }
                 match &mut state.state_type {
                     TaskStateType::Done { dependencies } => {
+                        let _span = tracing::trace_span!("shrink dependencies").entered();
                         dependencies.shrink_to_fit();
                     }
                     TaskStateType::Dirty { .. } => {}
@@ -1771,6 +1771,7 @@ impl Task {
 
                 // Check if the task need to be activated again
                 let active = if state.gc.inactive {
+                    let _span = tracing::trace_span!("check active").entered();
                     let active = state.aggregation_leaf.get_root_info(
                         &TaskAggregationContext::new(turbo_tasks, backend),
                         &RootInfoType::IsActive,
@@ -1825,6 +1826,7 @@ impl Task {
                     if has_unused_cells {
                         if empty_unused_priority <= max_priority {
                             // Empty unused cells
+                            let _span = tracing::trace_span!("empty unused cells").entered();
                             for cells in state.cells.values_mut() {
                                 cells.shrink_to_fit();
                                 for cell in cells.iter_mut() {
@@ -1911,6 +1913,7 @@ impl Task {
                             };
                             if new_priority <= max_priority {
                                 // Unload task
+                                let _span = tracing::trace_span!("unload").entered();
                                 if self.unload(state, backend, turbo_tasks) {
                                     stats.unloaded += 1;
                                     return None;
@@ -1933,6 +1936,8 @@ impl Task {
                             };
                             if new_priority <= max_priority {
                                 // Empty cells
+                                let _span = tracing::trace_span!("empty cells").entered();
+
                                 let cells = take(&mut state.cells);
                                 for cells in cells.into_values() {
                                     for mut cell in cells {
@@ -1952,6 +1957,7 @@ impl Task {
                             new_priority = empty_unused_priority;
                             if new_priority <= max_priority {
                                 // Empty unused cells
+                                let _span = tracing::trace_span!("empty unused cells").entered();
                                 for cells in state.cells.values_mut() {
                                     cells.shrink_to_fit();
                                     for cell in cells.iter_mut() {
@@ -1970,6 +1976,7 @@ impl Task {
                         }
 
                         // Shrink memory
+                        let _span = tracing::trace_span!("shrink memory").entered();
                         for cells in state.cells.values_mut() {
                             cells.shrink_to_fit();
                             for cell in cells.iter_mut() {
