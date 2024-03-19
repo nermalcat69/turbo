@@ -406,6 +406,7 @@ impl<'l> AggregationItemLock for TaskGuard<'l> {
             TaskMetaStateWriteGuard::Full(ref mut guard) => &mut guard.aggregation_leaf,
             TaskMetaStateWriteGuard::Partial(ref mut guard) => &mut guard.aggregation_leaf,
             TaskMetaStateWriteGuard::Unloaded(_) => unreachable!(),
+            TaskMetaStateWriteGuard::TemporaryFiller => unreachable!(),
         }
     }
 
@@ -423,6 +424,7 @@ impl<'l> AggregationItemLock for TaskGuard<'l> {
                 _ => guard.children.len(),
             },
             TaskMetaStateWriteGuard::Partial(_) | TaskMetaStateWriteGuard::Unloaded(_) => 0,
+            TaskMetaStateWriteGuard::TemporaryFiller => unreachable!(),
         }
     }
 
@@ -457,6 +459,7 @@ impl<'l> AggregationItemLock for TaskGuard<'l> {
             TaskMetaStateWriteGuard::Partial(_) | TaskMetaStateWriteGuard::Unloaded(_) => {
                 None.into_iter().flatten()
             }
+            TaskMetaStateWriteGuard::TemporaryFiller => unreachable!(),
         }
     }
 
@@ -502,6 +505,7 @@ impl<'l> AggregationItemLock for TaskGuard<'l> {
                 }
             }
             TaskMetaStateWriteGuard::Partial(_) | TaskMetaStateWriteGuard::Unloaded(_) => None,
+            TaskMetaStateWriteGuard::TemporaryFiller => unreachable!(),
         }
     }
 
@@ -547,6 +551,7 @@ impl<'l> AggregationItemLock for TaskGuard<'l> {
                 }
             }
             TaskMetaStateWriteGuard::Partial(_) | TaskMetaStateWriteGuard::Unloaded(_) => None,
+            TaskMetaStateWriteGuard::TemporaryFiller => unreachable!(),
         }
     }
 }

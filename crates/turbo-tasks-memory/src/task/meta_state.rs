@@ -3,7 +3,9 @@ use std::mem::replace;
 use parking_lot::{RwLockReadGuard, RwLockWriteGuard};
 use turbo_tasks::StatsType;
 
-use super::{PartialTaskState, Task, TaskState, UnloadedTaskState};
+use super::{
+    aggregation::TaskAggregationTreeLeaf, PartialTaskState, Task, TaskState, UnloadedTaskState,
+};
 use crate::map_guard::{ReadGuard, WriteGuard};
 
 pub(super) enum TaskMetaState {
@@ -117,6 +119,7 @@ pub(super) enum TaskMetaStateWriteGuard<'a> {
             TaskMetaStateAsUnloadedMut,
         >,
     ),
+    TemporaryFiller,
 }
 
 impl<'a> From<RwLockReadGuard<'a, TaskMetaState>> for TaskMetaStateReadGuard<'a> {
@@ -248,12 +251,28 @@ impl<'a> TaskMetaStateWriteGuard<'a> {
             TaskMetaStateWriteGuard::Full(state) => state.into_inner(),
             TaskMetaStateWriteGuard::Partial(state) => state.into_inner(),
             TaskMetaStateWriteGuard::Unloaded(state) => state.into_inner(),
+            TaskMetaStateWriteGuard::TemporaryFiller => unreachable!(),
         }
     }
 
     pub(super) fn ensure_at_least_partial(&mut self) {
-        if let TaskMetaStateWriteGuard::Unloaded(_state) = self {
-            todo!()
+        if matches!(self, TaskMetaStateWriteGuard::Unloaded(..)) {
+            let TaskMetaStateWriteGuard::Unloaded(state) =
+                replace(self, TaskMetaStateWriteGuard::TemporaryFiller)
+            else {
+                unreachable!();
+            };
+            let stats_type = state.stats_type;
+            let mut state = state.into_inner();
+            *state = TaskMetaState::Partial(Box::new(PartialTaskState {
+                stats_type,
+                aggregation_leaf: TaskAggregationTreeLeaf::new(),
+            }));
+            *self = TaskMetaStateWriteGuard::Partial(WriteGuard::new(
+                state,
+                TaskMetaState::as_partial,
+                TaskMetaState::as_partial_mut,
+            ));
         }
     }
 }
