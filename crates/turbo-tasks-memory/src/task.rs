@@ -411,7 +411,7 @@ enum TaskStateType {
 
     /// Invalid execution is happening
     ///
-    /// on finish this will move to Dirty or Scheduled depending on active flag
+    /// on finish this will move to Scheduled
     InProgressDirty { event: Event },
 }
 
