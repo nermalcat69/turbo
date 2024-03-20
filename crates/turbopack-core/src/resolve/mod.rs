@@ -2280,7 +2280,7 @@ async fn resolved(
         path.parent().resolve().await?,
         options,
         options_value,
-        |package_path| package_path.get_relative_path_to(path_ref),
+        |package_path| package_path.get_relative_path_to(path_ref).map(From::from),
         query,
     )
     .await?
@@ -2357,9 +2357,11 @@ async fn handle_exports_imports_field(
             let request = Request::parse(Value::new(format!("./{}", result_path).into()));
             let resolve_result = resolve_internal_boxed(package_path, request, options).await?;
             if conditions.is_empty() {
-                resolved_results.push(resolve_result.with_request(path.to_string()));
+                resolved_results.push(resolve_result.with_request(path.to_string().into()));
             } else {
-                let mut resolve_result = resolve_result.await?.with_request_ref(path.to_string());
+                let mut resolve_result = resolve_result
+                    .await?
+                    .with_request_ref(path.to_string().into());
                 resolve_result.add_conditions(conditions);
                 resolved_results.push(resolve_result.cell());
             }
@@ -2389,7 +2391,7 @@ async fn resolve_package_internal_with_imports_field(
         bail!("PackageInternal requests can only be Constant strings");
     };
     // https://github.com/nodejs/node/blob/1b177932/lib/internal/modules/esm/resolve.js#L615-L619
-    if specifier == "#" || specifier.starts_with("#/") || specifier.ends_with('/') {
+    if &**specifier == "#" || specifier.starts_with("#/") || specifier.ends_with('/') {
         ResolvingIssue {
             severity: IssueSeverity::Error.cell(),
             file_path,
@@ -2502,11 +2504,11 @@ impl ModulePart {
         ModulePart::Evaluation.cell()
     }
     #[turbo_tasks::function]
-    pub fn export(export: String) -> Vc<Self> {
+    pub fn export(export: Arc<String>) -> Vc<Self> {
         ModulePart::Export(Vc::cell(export)).cell()
     }
     #[turbo_tasks::function]
-    pub fn renamed_export(original_export: String, export: String) -> Vc<Self> {
+    pub fn renamed_export(original_export: Arc<String>, export: Arc<String>) -> Vc<Self> {
         ModulePart::RenamedExport {
             original_export: Vc::cell(original_export),
             export: Vc::cell(export),
@@ -2514,7 +2516,7 @@ impl ModulePart {
         .cell()
     }
     #[turbo_tasks::function]
-    pub fn renamed_namespace(export: String) -> Vc<Self> {
+    pub fn renamed_namespace(export: Arc<String>) -> Vc<Self> {
         ModulePart::RenamedNamespace {
             export: Vc::cell(export),
         }
