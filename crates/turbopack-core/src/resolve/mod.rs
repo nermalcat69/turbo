@@ -1870,7 +1870,7 @@ async fn resolve_relative_request(
             let mut matches_without_extension = false;
             if !options_value.fully_specified {
                 for ext in options_value.extensions.iter() {
-                    let Some(matched_pattern) = matched_pattern.strip_suffix(ext) else {
+                    let Some(matched_pattern) = matched_pattern.strip_suffix(&**ext) else {
                         continue;
                     };
                     if path_pattern.is_match(matched_pattern) {
@@ -1987,7 +1987,7 @@ async fn apply_in_package(
             return Ok(Some(
                 resolve_internal(
                     package_path,
-                    Request::parse(Value::new(Pattern::Constant(value.to_string())))
+                    Request::parse(Value::new(Pattern::Constant(value.to_string().into())))
                         .with_query(query),
                     options,
                 )
@@ -2000,7 +2000,7 @@ async fn apply_in_package(
             severity: IssueSeverity::Error.cell(),
             file_path: *package_json_path,
             request_type: format!("alias field ({field})"),
-            request: Request::parse(Value::new(Pattern::Constant(request.to_string()))),
+            request: Request::parse(Value::new(Pattern::Constant(request.to_string().into()))),
             resolve_options: options,
             error_message: Some(format!("invalid alias field value: {}", value)),
             source: None,
@@ -2075,7 +2075,7 @@ async fn resolve_module_request(
             FindPackageItem::PackageFile(package_path) => {
                 if path.is_match("") {
                     let resolved = resolved(
-                        RequestKey::new(".".to_string()),
+                        RequestKey::new(".".to_string().into()),
                         package_path,
                         lookup_path,
                         request,
@@ -2093,12 +2093,12 @@ async fn resolve_module_request(
     let module_result =
         merge_results_with_affecting_sources(results, result.affecting_sources.clone())
             .with_replaced_request_key(
-                ".".to_string(),
-                Value::new(RequestKey::new(module.to_string())),
+                ".".to_string().into(),
+                Value::new(RequestKey::new(module.to_string().into())),
             );
 
     if options_value.prefer_relative {
-        let module_prefix = format!("./{module}");
+        let module_prefix = Arc::new(format!("./{module}"));
         let pattern = Pattern::concat([
             module_prefix.clone().into(),
             "/".to_string().into(),
@@ -2109,7 +2109,7 @@ async fn resolve_module_request(
             resolve_internal_boxed(lookup_path, relative.resolve().await?, options).await?;
         let relative_result = relative_result.with_replaced_request_key(
             module_prefix,
-            Value::new(RequestKey::new(module.to_string())),
+            Value::new(RequestKey::new(module.to_string().into())),
         );
 
         Ok(merge_results(vec![relative_result, module_result]))
@@ -2140,7 +2140,7 @@ async fn resolve_into_package(
                 conditions,
                 unspecified_conditions,
             } => {
-                let package_json_path = package_path.join("package.json".to_string());
+                let package_json_path = package_path.join("package.json".to_string().into());
                 let ExportsFieldResult::Some(exports_field) =
                     &*exports_field(package_json_path).await?
                 else {
@@ -2151,7 +2151,7 @@ async fn resolve_into_package(
                     todo!("pattern into an exports field is not implemented yet");
                 };
 
-                let path = if path == "/" {
+                let path = if &**path == "/" {
                     ".".to_string()
                 } else {
                     format!(".{path}")
