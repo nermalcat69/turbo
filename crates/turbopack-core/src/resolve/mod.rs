@@ -5,6 +5,7 @@ use std::{
     future::Future,
     iter::once,
     pin::Pin,
+    sync::Arc,
 };
 
 use anyhow::{bail, Result};
@@ -1095,7 +1096,7 @@ pub async fn find_context_file(
     let mut refs = Vec::new();
     let context_value = lookup_path.await?;
     for name in &*names.await? {
-        let fs_path = lookup_path.join(name.clone());
+        let fs_path = lookup_path.join(name.clone().into());
         if let Some(fs_path) = exists(fs_path, &mut refs).await? {
             return Ok(FindContextFileResult::Found(fs_path, refs).into());
         }
@@ -1140,7 +1141,7 @@ struct FindPackageResult {
 #[turbo_tasks::function]
 async fn find_package(
     lookup_path: Vc<FileSystemPath>,
-    package_name: String,
+    package_name: Arc<String>,
     options: Vc<ResolveModulesOptions>,
 ) -> Result<Vc<FindPackageResult>> {
     let mut packages = vec![];
@@ -1155,7 +1156,7 @@ async fn find_package(
                 let root = &*root_vc.await?;
                 while lookup_path_value.is_inside_ref(root) {
                     for name in names.iter() {
-                        let fs_path = lookup_path.join(name.clone());
+                        let fs_path = lookup_path.join(name.clone().into());
                         if let Some(fs_path) = dir_exists(fs_path, &mut affecting_sources).await? {
                             let fs_path = fs_path.join(package_name.clone());
                             if let Some(fs_path) =
@@ -1189,7 +1190,7 @@ async fn find_package(
                     }
                 }
                 for extension in &options.extensions {
-                    let package_file = package_dir.append(extension.clone());
+                    let package_file = package_dir.append(extension.clone().into());
                     if let Some(package_file) = exists(package_file, &mut affecting_sources).await?
                     {
                         packages.push(FindPackageItem::PackageFile(package_file));
@@ -1740,7 +1741,7 @@ async fn resolve_into_folder(
     package_path: Vc<FileSystemPath>,
     options: Vc<ResolveOptions>,
 ) -> Result<Vc<ResolveResult>> {
-    let package_json_path = package_path.join("package.json".to_string());
+    let package_json_path = package_path.join("package.json".to_string().into());
     let options_value = options.await?;
 
     for resolve_into_package in options_value.into_package.iter() {
@@ -2042,7 +2043,7 @@ async fn resolve_module_request(
 
     let result = find_package(
         lookup_path,
-        module.to_string(),
+        module.to_string().into(),
         resolve_modules_options(options).resolve().await?,
     )
     .await?;
