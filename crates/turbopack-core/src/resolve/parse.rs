@@ -21,7 +21,7 @@ pub enum Request {
         force_in_lookup_dir: bool,
     },
     Module {
-        module: String,
+        module: Arc<String>,
         path: Pattern,
         query: Vc<String>,
     },
@@ -38,8 +38,8 @@ pub enum Request {
         path: Pattern,
     },
     Uri {
-        protocol: String,
-        remainder: String,
+        protocol: Arc<String>,
+        remainder: Arc<String>,
     },
     Unknown {
         path: Pattern,
@@ -50,13 +50,13 @@ pub enum Request {
     },
 }
 
-fn split_off_query(raw: String) -> (Pattern, Vc<String>) {
+fn split_off_query(raw: Arc<String>) -> (Pattern, Vc<String>) {
     let Some((raw, query)) = raw.split_once('?') else {
         return (Pattern::Constant(raw), Vc::<String>::default());
     };
 
     (
-        Pattern::Constant(raw.to_string()),
+        Pattern::Constant(raw.to_string().into()),
         Vc::cell(format!("?{}", query)),
     )
 }
@@ -116,7 +116,8 @@ impl Request {
                     Request::PackageInternal {
                         path: Pattern::Constant(r),
                     }
-                } else if r.starts_with("./") || r.starts_with("../") || r == "." || r == ".." {
+                } else if r.starts_with("./") || r.starts_with("../") || &**r == "." || &**r == ".."
+                {
                     let (path, query) = split_off_query(r);
 
                     Request::Relative {
@@ -142,8 +143,8 @@ impl Request {
                         if let (Some(protocol), Some(remainder)) = (caps.get(1), caps.get(2)) {
                             // TODO data uri
                             return Request::Uri {
-                                protocol: protocol.as_str().to_string(),
-                                remainder: remainder.as_str().to_string(),
+                                protocol: protocol.as_str().to_string().into(),
+                                remainder: remainder.as_str().to_string().into(),
                             };
                         }
                     }
@@ -152,10 +153,10 @@ impl Request {
                         .captures(&r)
                         .and_then(|caps| caps.get(1).zip(caps.get(2)))
                     {
-                        let (path, query) = split_off_query(path.as_str().to_string());
+                        let (path, query) = split_off_query(path.as_str().to_string().into());
 
                         return Request::Module {
-                            module: module.as_str().to_string(),
+                            module: module.as_str().to_string().into(),
                             path,
                             query,
                         };
@@ -252,7 +253,7 @@ impl Request {
     }
 
     #[turbo_tasks::function]
-    pub fn module(module: String, path: Value<Pattern>, query: Vc<String>) -> Vc<Self> {
+    pub fn module(module: Arc<String>, path: Value<Pattern>, query: Vc<String>) -> Vc<Self> {
         Self::cell(Request::Module {
             module,
             path: path.into_value(),
@@ -358,7 +359,7 @@ impl Request {
     }
 
     #[turbo_tasks::function]
-    pub async fn append_path(self: Vc<Self>, suffix: String) -> Result<Vc<Self>> {
+    pub async fn append_path(self: Vc<Self>, suffix: Arc<String>) -> Result<Vc<Self>> {
         Ok(match &*self.await? {
             Request::Raw {
                 path,
@@ -415,7 +416,7 @@ impl Request {
                 protocol,
                 remainder,
             } => {
-                let remainder = format!("{}{}", remainder, suffix);
+                let remainder = Arc::new(format!("{}{}", remainder, suffix));
                 Self::Uri {
                     protocol: protocol.clone(),
                     remainder,

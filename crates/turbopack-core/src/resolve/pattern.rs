@@ -428,7 +428,7 @@ impl Pattern {
         match self {
             Pattern::Constant(c) => {
                 if let Some(offset) = any_offset {
-                    if let Some(index) = value.find(c) {
+                    if let Some(index) = value.find(&**c) {
                         if index <= offset {
                             MatchResult::Consumed {
                                 remaining: &value[index + c.len()..],
@@ -442,7 +442,7 @@ impl Pattern {
                     } else {
                         MatchResult::None
                     }
-                } else if value.starts_with(c) {
+                } else if value.starts_with(&**c) {
                     MatchResult::Consumed {
                         remaining: &value[c.len()..],
                         any_offset: None,
@@ -545,7 +545,7 @@ impl Pattern {
         match self {
             Pattern::Constant(c) => {
                 if let Some(offset) = any_offset {
-                    if let Some(index) = value.find(c) {
+                    if let Some(index) = value.find(&**c) {
                         if index <= offset {
                             NextConstantUntilResult::Consumed(&value[index + c.len()..], None)
                         } else {
@@ -556,7 +556,7 @@ impl Pattern {
                     } else {
                         NextConstantUntilResult::NoMatch
                     }
-                } else if let Some(stripped) = value.strip_prefix(c) {
+                } else if let Some(stripped) = value.strip_prefix(&**c) {
                     NextConstantUntilResult::Consumed(stripped, None)
                 } else if let Some(stripped) = c.strip_prefix(value) {
                     NextConstantUntilResult::Partial(stripped, true)
@@ -610,7 +610,7 @@ impl Pattern {
 
     pub fn or_any_nested_file(&self) -> Self {
         let mut new = self.clone();
-        new.push(Pattern::Constant("/".to_string()));
+        new.push(Pattern::Constant("/".to_string().into()));
         new.push(Pattern::Dynamic);
         new.normalize();
         Pattern::alternatives([self.clone(), new])
