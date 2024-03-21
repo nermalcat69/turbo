@@ -202,7 +202,7 @@ impl RequireContextMap {
 #[derive(Hash, Debug)]
 pub struct RequireContextAssetReference {
     pub inner: Vc<RequireContextAsset>,
-    pub dir: String,
+    pub dir: Arc<String>,
     pub include_subdirs: bool,
 
     pub path: Vc<AstPath>,
@@ -216,7 +216,7 @@ impl RequireContextAssetReference {
     pub fn new(
         source: Vc<Box<dyn Source>>,
         origin: Vc<Box<dyn ResolveOrigin>>,
-        dir: String,
+        dir: Arc<String>,
         include_subdirs: bool,
         filter: Vc<Regex>,
         path: Vc<AstPath>,
@@ -330,7 +330,7 @@ pub struct RequireContextAsset {
     origin: Vc<Box<dyn ResolveOrigin>>,
     map: Vc<RequireContextMap>,
 
-    dir: String,
+    dir: Arc<String>,
     include_subdirs: bool,
 }
 

@@ -112,13 +112,13 @@ impl ValueToString for TsReferencePathAssetReference {
 #[derive(Hash, Debug)]
 pub struct TsReferenceTypeAssetReference {
     pub origin: Vc<Box<dyn ResolveOrigin>>,
-    pub module: String,
+    pub module: Arc<String>,
 }
 
 #[turbo_tasks::value_impl]
 impl TsReferenceTypeAssetReference {
     #[turbo_tasks::function]
-    pub fn new(origin: Vc<Box<dyn ResolveOrigin>>, module: String) -> Vc<Self> {
+    pub fn new(origin: Vc<Box<dyn ResolveOrigin>>, module: Arc<String>) -> Vc<Self> {
         Self::cell(TsReferenceTypeAssetReference { origin, module })
     }
 }
