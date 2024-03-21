@@ -383,7 +383,7 @@ impl EsmExports {
                 if !exports.contains_key(export) {
                     exports.insert(
                         export.clone(),
-                        EsmExport::ImportedBinding(Vc::upcast(*esm_ref), export.to_string()),
+                        EsmExport::ImportedBinding(Vc::upcast(*esm_ref), export.clone()),
                     );
                 }
             }

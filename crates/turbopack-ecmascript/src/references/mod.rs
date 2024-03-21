@@ -610,7 +610,10 @@ pub(crate) async fn analyse_ecmascript_module_internal(
                     } => {
                         visitor.esm_exports.insert(
                             e.to_string().into(),
-                            EsmExport::ImportedBinding(Vc::upcast(import_ref), i.to_string()),
+                            EsmExport::ImportedBinding(
+                                Vc::upcast(import_ref),
+                                i.to_string().into(),
+                            ),
                         );
                     }
                 }
@@ -2580,7 +2583,7 @@ impl<'a> VisitAstPath for ModuleReferencesVisitor<'a> {
                     }
                     ExportSpecifier::Named(ExportNamedSpecifier { orig, exported, .. }) => {
                         let key = Arc::new(to_string(exported.as_ref().unwrap_or(orig)));
-                        let binding_name = to_string(orig);
+                        let binding_name = Arc::new(to_string(orig));
                         let export = {
                             let imported_binding = if let ModuleExportName::Ident(ident) = orig {
                                 self.eval_context.imports.get_binding(&ident.to_id())
@@ -2590,7 +2593,7 @@ impl<'a> VisitAstPath for ModuleReferencesVisitor<'a> {
                             if let Some((index, export)) = imported_binding {
                                 let esm_ref = self.import_references[index];
                                 if let Some(export) = export {
-                                    EsmExport::ImportedBinding(Vc::upcast(esm_ref), export)
+                                    EsmExport::ImportedBinding(Vc::upcast(esm_ref), export.into())
                                 } else {
                                     EsmExport::ImportedNamespace(Vc::upcast(esm_ref))
                                 }
