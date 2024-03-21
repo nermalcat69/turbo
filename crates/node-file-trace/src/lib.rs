@@ -196,7 +196,7 @@ impl Args {
 }
 
 async fn create_fs(name: &str, root: &str, watch: bool) -> Result<Vc<Box<dyn FileSystem>>> {
-    let fs = DiskFileSystem::new(name.to_string(), root.to_string(), vec![]);
+    let fs = DiskFileSystem::new(name.to_string().into(), root.to_string().into(), vec![]);
     if watch {
         fs.await?.start_watching()?;
     } else {
@@ -240,17 +240,17 @@ async fn add_glob_results(
 #[turbo_tasks::function]
 async fn input_to_modules(
     fs: Vc<Box<dyn FileSystem>>,
-    input: Vec<String>,
+    input: Vec<Arc<String>>,
     exact: bool,
-    process_cwd: Option<String>,
-    context_directory: String,
+    process_cwd: Option<Arc<String>>,
+    context_directory: Arc<String>,
     module_options: TransientInstance<ModuleOptionsContext>,
     resolve_options: TransientInstance<ResolveOptionsContext>,
 ) -> Result<Vc<Modules>> {
     let root = fs.root();
     let process_cwd = process_cwd
         .clone()
-        .map(|p| format!("/ROOT{}", p.trim_start_matches(&context_directory)));
+        .map(|p| format!("/ROOT{}", p.trim_start_matches(&*context_directory)));
 
     let asset_context: Vc<Box<dyn AssetContext>> = Vc::upcast(create_module_asset(
         root,
@@ -291,7 +291,7 @@ fn process_context(dir: &Path, context_directory: Option<&String>) -> Result<Str
         .to_string())
 }
 
-fn make_relative_path(dir: &Path, context_directory: &str, input: &str) -> Result<String> {
+fn make_relative_path(dir: &Path, context_directory: &str, input: &str) -> Result<Arc<String>> {
     let mut input = PathBuf::from(input);
     if !input.is_absolute() {
         input = dir.join(input);
@@ -307,10 +307,15 @@ fn make_relative_path(dir: &Path, context_directory: &str, input: &str) -> Resul
     Ok(input
         .to_str()
         .ok_or_else(|| anyhow!("input contains invalid characters"))?
-        .replace('\\', "/"))
+        .replace('\\', "/")
+        .into())
 }
 
-fn process_input(dir: &Path, context_directory: &str, input: &[String]) -> Result<Vec<String>> {
+fn process_input(
+    dir: &Path,
+    context_directory: &str,
+    input: &[String],
+) -> Result<Vec<Arc<String>>> {
     input
         .iter()
         .map(|input| make_relative_path(dir, context_directory, input))
@@ -561,8 +566,8 @@ async fn main_operation(
                 fs,
                 input,
                 exact,
-                process_cwd.clone(),
-                context_directory,
+                process_cwd.clone().map(Arc::new),
+                context_directory.into(),
                 module_options,
                 resolve_options,
             )
@@ -587,8 +592,8 @@ async fn main_operation(
                 fs,
                 input,
                 exact,
-                process_cwd.clone(),
-                context_directory,
+                process_cwd.clone().map(Arc::new),
+                context_directory.into(),
                 module_options,
                 resolve_options,
             )
@@ -620,8 +625,8 @@ async fn main_operation(
                 fs,
                 input,
                 exact,
-                process_cwd.clone(),
-                context_directory,
+                process_cwd.clone().map(Arc::new),
+                context_directory.into(),
                 module_options,
                 resolve_options,
             )
