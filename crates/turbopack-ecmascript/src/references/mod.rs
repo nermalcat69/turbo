@@ -2617,8 +2617,9 @@ impl<'a> VisitAstPath for ModuleReferencesVisitor<'a> {
         ast_path: &mut AstNodePath<AstParentNodeRef<'r>>,
     ) {
         for_each_ident_in_decl(&export.decl, &mut |name| {
+            let name = Arc::new(name);
             self.esm_exports
-                .insert(name.clone().into(), EsmExport::LocalBinding(name));
+                .insert(name.clone(), EsmExport::LocalBinding(name));
         });
         self.analysis
             .add_code_gen(EsmModuleItem::new(Vc::cell(as_parent_path(ast_path))));
