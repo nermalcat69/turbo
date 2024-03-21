@@ -1849,7 +1849,7 @@ async fn resolve_relative_request(
                     options_value
                         .extensions
                         .iter()
-                        .map(|ext| Pattern::Constant(ext.clone())),
+                        .map(|ext| Pattern::Constant((**ext).clone())),
                 )
                 .collect(),
         ));

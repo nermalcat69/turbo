@@ -50,7 +50,7 @@ pub enum Request {
     },
 }
 
-fn split_off_query(raw: Arc<String>) -> (Pattern, Vc<String>) {
+fn split_off_query(raw: String) -> (Pattern, Vc<String>) {
     let Some((raw, query)) = raw.split_once('?') else {
         return (Pattern::Constant(raw), Vc::<String>::default());
     };
@@ -116,8 +116,7 @@ impl Request {
                     Request::PackageInternal {
                         path: Pattern::Constant(r),
                     }
-                } else if r.starts_with("./") || r.starts_with("../") || &**r == "." || &**r == ".."
-                {
+                } else if r.starts_with("./") || r.starts_with("../") || r == "." || r == ".." {
                     let (path, query) = split_off_query(r);
 
                     Request::Relative {

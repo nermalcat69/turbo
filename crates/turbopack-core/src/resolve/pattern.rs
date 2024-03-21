@@ -13,7 +13,7 @@ use turbo_tasks_fs::{
 #[turbo_tasks::value(serialization = "auto_for_input")]
 #[derive(PartialOrd, Ord, Hash, Clone, Debug, Default)]
 pub enum Pattern {
-    Constant(Arc<String>),
+    Constant(String),
     #[default]
     Dynamic,
     Alternatives(Vec<Pattern>),
@@ -715,13 +715,13 @@ enum NextConstantUntilResult<'a, 'b> {
 
 impl From<String> for Pattern {
     fn from(s: String) -> Self {
-        Pattern::Constant(Arc::new(s))
+        Pattern::Constant(s)
     }
 }
 
 impl From<Arc<String>> for Pattern {
     fn from(s: Arc<String>) -> Self {
-        Pattern::Constant(s)
+        Pattern::Constant((*s).clone())
     }
 }
 
