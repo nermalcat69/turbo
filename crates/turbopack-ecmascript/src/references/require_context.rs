@@ -335,7 +335,7 @@ pub struct RequireContextAsset {
 }
 
 #[turbo_tasks::function]
-fn modifier(dir: String, include_subdirs: bool) -> Vc<String> {
+fn modifier(dir: Arc<String>, include_subdirs: bool) -> Vc<String> {
     Vc::cell(format!(
         "require.context {}/{}",
         dir,

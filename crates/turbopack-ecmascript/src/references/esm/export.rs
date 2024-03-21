@@ -34,9 +34,9 @@ use crate::{
 #[derive(Clone, Hash, Debug, PartialEq, Eq, Serialize, Deserialize, TraceRawVcs)]
 pub enum EsmExport {
     /// A local binding that is exported (export { a } or export const a = 1)
-    LocalBinding(String),
+    LocalBinding(Arc<String>),
     /// An imported binding that is exported (export { a as b } from "...")
-    ImportedBinding(Vc<Box<dyn ModuleReference>>, String),
+    ImportedBinding(Vc<Box<dyn ModuleReference>>, Arc<String>),
     /// An imported namespace that is exported (export * from "...")
     ImportedNamespace(Vc<Box<dyn ModuleReference>>),
     /// An error occurred while resolving the export

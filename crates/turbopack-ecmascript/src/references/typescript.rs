@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use turbo_tasks::{Value, ValueToString, Vc};
 use turbo_tasks_fs::FileSystemPath;
@@ -54,13 +56,13 @@ impl ValueToString for TsConfigReference {
 #[derive(Hash, Debug)]
 pub struct TsReferencePathAssetReference {
     pub origin: Vc<Box<dyn ResolveOrigin>>,
-    pub path: String,
+    pub path: Arc<String>,
 }
 
 #[turbo_tasks::value_impl]
 impl TsReferencePathAssetReference {
     #[turbo_tasks::function]
-    pub fn new(origin: Vc<Box<dyn ResolveOrigin>>, path: String) -> Vc<Self> {
+    pub fn new(origin: Vc<Box<dyn ResolveOrigin>>, path: Arc<String>) -> Vc<Self> {
         Self::cell(TsReferencePathAssetReference { origin, path })
     }
 }

@@ -464,13 +464,13 @@ pub(crate) async fn analyse_ecmascript_module_internal(
                         let path = &m[1];
                         analysis.add_reference(TsReferencePathAssetReference::new(
                             origin,
-                            path.to_string(),
+                            path.to_string().into(),
                         ));
                     } else if let Some(m) = REFERENCE_TYPES.captures(text) {
                         let types = &m[1];
                         analysis.add_reference(TsReferenceTypeAssetReference::new(
                             origin,
-                            types.to_string(),
+                            types.to_string().into(),
                         ));
                     }
                 }
