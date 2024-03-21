@@ -1,4 +1,4 @@
-use std::iter::once;
+use std::{iter::once, sync::Arc};
 
 use anyhow::{bail, Context, Result};
 use tracing::Instrument;
@@ -257,7 +257,7 @@ impl ChunkingContext for NodeJsChunkingContext {
     async fn chunk_path(
         &self,
         ident: Vc<AssetIdent>,
-        extension: String,
+        extension: Arc<String>,
     ) -> Result<Vc<FileSystemPath>> {
         let root_path = self.chunk_root_path;
         let name = ident.output_name(self.context_path, extension).await?;
@@ -306,7 +306,7 @@ impl ChunkingContext for NodeJsChunkingContext {
                 content_hash = &content_hash[..8]
             ),
         };
-        Ok(self.asset_root_path.join(asset_path))
+        Ok(self.asset_root_path.join(asset_path.into()))
     }
 
     #[turbo_tasks::function]
