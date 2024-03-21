@@ -52,8 +52,8 @@ pub(crate) mod web_entry_source;
 
 pub struct TurbopackDevServerBuilder {
     turbo_tasks: Arc<TurboTasks<MemoryBackend>>,
-    project_dir: String,
-    root_dir: String,
+    project_dir: Arc<String>,
+    root_dir: Arc<String>,
     entry_requests: Vec<EntryRequest>,
     eager_compile: bool,
     hostname: Option<IpAddr>,
@@ -69,8 +69,8 @@ pub struct TurbopackDevServerBuilder {
 impl TurbopackDevServerBuilder {
     pub fn new(
         turbo_tasks: Arc<TurboTasks<MemoryBackend>>,
-        project_dir: String,
-        root_dir: String,
+        project_dir: Arc<String>,
+        root_dir: Arc<String>,
     ) -> TurbopackDevServerBuilder {
         TurbopackDevServerBuilder {
             turbo_tasks,
@@ -199,7 +199,7 @@ impl TurbopackDevServerBuilder {
         let browserslist_query = self.browserslist_query;
         let log_args = Arc::new(LogOptions {
             current_dir: current_dir().unwrap(),
-            project_dir: PathBuf::from(project_dir.clone()),
+            project_dir: PathBuf::from(&*project_dir.clone()),
             show_all,
             log_detail,
             log_level: self.log_level,
@@ -218,7 +218,7 @@ impl TurbopackDevServerBuilder {
                 entry_requests.clone().into(),
                 eager_compile,
                 turbo_tasks.clone().into(),
-                browserslist_query.clone(),
+                browserslist_query.clone().into(),
             )
         };
 
@@ -229,12 +229,12 @@ impl TurbopackDevServerBuilder {
 
 #[turbo_tasks::function]
 async fn source(
-    root_dir: String,
-    project_dir: String,
+    root_dir: Arc<String>,
+    project_dir: Arc<String>,
     entry_requests: TransientInstance<Vec<EntryRequest>>,
     eager_compile: bool,
     turbo_tasks: TransientInstance<TurboTasks<MemoryBackend>>,
-    browserslist_query: String,
+    browserslist_query: Arc<String>,
 ) -> Result<Vc<Box<dyn ContentSource>>> {
     let project_relative = project_dir.strip_prefix(&root_dir).unwrap();
     let project_relative = project_relative

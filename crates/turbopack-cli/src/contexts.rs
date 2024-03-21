@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, sync::Arc};
 
 use anyhow::Result;
 use turbo_tasks::{Value, Vc};
@@ -206,7 +206,7 @@ fn client_defines(node_env: &NodeEnv) -> Vc<CompileTimeDefines> {
 
 #[turbo_tasks::function]
 pub async fn get_client_compile_time_info(
-    browserslist_query: String,
+    browserslist_query: Arc<String>,
     node_env: Vc<NodeEnv>,
 ) -> Result<Vc<CompileTimeInfo>> {
     Ok(
@@ -215,7 +215,7 @@ pub async fn get_client_compile_time_info(
                 dom: true,
                 web_worker: false,
                 service_worker: false,
-                browserslist_query,
+                browserslist_query: browserslist_query.to_string(),
             }
             .into(),
         ))))

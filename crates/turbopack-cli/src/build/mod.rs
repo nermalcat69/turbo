@@ -201,7 +201,7 @@ async fn build_internal(
         .build(),
     );
 
-    let compile_time_info = get_client_compile_time_info(browserslist_query.to_string(), node_env);
+    let compile_time_info = get_client_compile_time_info(browserslist_query, node_env);
     let execution_context =
         ExecutionContext::new(project_path, chunking_context, load_env(project_path));
     let asset_context =
