@@ -2032,7 +2032,7 @@ async fn resolve_module_request(
         options_value,
         |_| {
             let full_pattern = Pattern::concat([module.to_string().into(), path.clone()]);
-            full_pattern.into_string()
+            full_pattern.into_string().map(Arc::new)
         },
         query,
     )
@@ -2151,7 +2151,7 @@ async fn resolve_into_package(
                     todo!("pattern into an exports field is not implemented yet");
                 };
 
-                let path = if &**path == "/" {
+                let path = if path == "/" {
                     ".".to_string()
                 } else {
                     format!(".{path}")
