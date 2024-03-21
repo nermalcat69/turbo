@@ -497,7 +497,7 @@ pub(crate) async fn analyse_ecmascript_module_internal(
     if let Some((_, path)) = paths_by_pos.into_iter().max_by_key(|&(pos, _)| pos) {
         let origin_path = origin.origin_path();
         if path.ends_with(".map") {
-            let source_map_origin = origin_path.parent().join(path.to_string());
+            let source_map_origin = origin_path.parent().join(path.to_string().into());
             let reference = SourceMapReference::new(origin_path, source_map_origin);
             analysis.add_reference(reference);
             let source_map = reference.generate_source_map();
@@ -551,7 +551,9 @@ pub(crate) async fn analyse_ecmascript_module_internal(
                         evaluation_references.push(i);
                         Some(ModulePart::evaluation())
                     }
-                    ImportedSymbol::Symbol(name) => Some(ModulePart::export(name.to_string())),
+                    ImportedSymbol::Symbol(name) => {
+                        Some(ModulePart::export(name.to_string().into()))
+                    }
                     ImportedSymbol::Namespace => None,
                 },
                 Some(TreeShakingMode::ReexportsOnly) => match &r.imported_symbol {
@@ -559,7 +561,9 @@ pub(crate) async fn analyse_ecmascript_module_internal(
                         evaluation_references.push(i);
                         Some(ModulePart::evaluation())
                     }
-                    ImportedSymbol::Symbol(name) => Some(ModulePart::export(name.to_string())),
+                    ImportedSymbol::Symbol(name) => {
+                        Some(ModulePart::export(name.to_string().into()))
+                    }
                     ImportedSymbol::Namespace => None,
                 },
                 None => None,
@@ -2441,7 +2445,7 @@ struct ModuleReferencesVisitor<'a> {
     old_analyser: StaticAnalyser,
     import_references: &'a [Vc<EsmAssetReference>],
     analysis: &'a mut AnalyzeEcmascriptModuleResultBuilder,
-    esm_exports: BTreeMap<String, EsmExport>,
+    esm_exports: BTreeMap<Arc<String>, EsmExport>,
     esm_star_exports: Vec<Vc<Box<dyn ModuleReference>>>,
     webpack_runtime: Option<(String, Span)>,
     webpack_entry: bool,
