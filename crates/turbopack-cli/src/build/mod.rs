@@ -174,13 +174,13 @@ async fn build_internal(
     )));
     let output_fs = output_fs(project_dir.clone());
     let project_fs = project_fs(root_dir.clone());
-    let project_relative = project_dir.strip_prefix(&root_dir).unwrap();
+    let project_relative = project_dir.strip_prefix(&*root_dir).unwrap();
     let project_relative = project_relative
         .strip_prefix(MAIN_SEPARATOR)
         .unwrap_or(project_relative)
         .replace(MAIN_SEPARATOR, "/");
-    let project_path = project_fs.root().join(project_relative);
-    let build_output_root = output_fs.root().join("dist".to_string());
+    let project_path = project_fs.root().join(project_relative.into());
+    let build_output_root = output_fs.root().join("dist".to_string().into());
 
     let node_env = NodeEnv::Production.cell();
 
@@ -201,7 +201,7 @@ async fn build_internal(
         .build(),
     );
 
-    let compile_time_info = get_client_compile_time_info(browserslist_query, node_env);
+    let compile_time_info = get_client_compile_time_info(browserslist_query.to_string(), node_env);
     let execution_context =
         ExecutionContext::new(project_path, chunking_context, load_env(project_path));
     let asset_context =
@@ -216,16 +216,19 @@ async fn build_internal(
                 EntryRequest::Relative(p) => {
                     Request::relative(Value::new(p.clone().into()), Default::default(), false)
                 }
-                EntryRequest::Module(m, p) => {
-                    Request::module(m.clone(), Value::new(p.clone().into()), Default::default())
-                }
+                EntryRequest::Module(m, p) => Request::module(
+                    m.clone().into(),
+                    Value::new(p.clone().into()),
+                    Default::default(),
+                ),
             })
         })
         .try_join()
         .await?)
         .to_vec();
 
-    let origin = PlainResolveOrigin::new(asset_context, output_fs.root().join("_".to_string()));
+    let origin =
+        PlainResolveOrigin::new(asset_context, output_fs.root().join("_".to_string().into()));
     let project_dir = &project_dir;
     let entries = entry_requests
         .into_iter()
@@ -268,9 +271,10 @@ async fn build_internal(
                                             .await?
                                             .as_deref()
                                             .unwrap()
-                                            .to_string(),
+                                            .to_string()
+                                            .into(),
                                     )
-                                    .with_extension("entry.js".to_string()),
+                                    .with_extension("entry.js".to_string().into()),
                                 Vc::upcast(ecmascript),
                                 EvaluatableAssets::one(Vc::upcast(ecmascript)),
                                 Value::new(AvailabilityInfo::Root),
