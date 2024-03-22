@@ -35,22 +35,22 @@ impl ContentSource for TurboTasksSource {
     fn get_routes(self: Vc<Self>) -> Vc<RouteTree> {
         Vc::<RouteTrees>::cell(vec![
             RouteTree::new_route(
-                vec![BaseSegment::Static("graph".to_string())],
+                vec![BaseSegment::Static("graph".to_string().into())],
                 RouteType::Exact,
                 Vc::upcast(self),
             ),
             RouteTree::new_route(
-                vec![BaseSegment::Static("call-graph".to_string())],
+                vec![BaseSegment::Static("call-graph".to_string().into())],
                 RouteType::Exact,
                 Vc::upcast(self),
             ),
             RouteTree::new_route(
-                vec![BaseSegment::Static("table".to_string())],
+                vec![BaseSegment::Static("table".to_string().into())],
                 RouteType::Exact,
                 Vc::upcast(self),
             ),
             RouteTree::new_route(
-                vec![BaseSegment::Static("reset".to_string())],
+                vec![BaseSegment::Static("reset".to_string().into())],
                 RouteType::Exact,
                 Vc::upcast(self),
             ),

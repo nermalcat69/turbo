@@ -344,7 +344,7 @@ pub async fn start_server(args: &DevArguments) -> Result<()> {
 
     let tt_clone = tt.clone();
 
-    let mut server = TurbopackDevServerBuilder::new(tt, project_dir, root_dir)
+    let mut server = TurbopackDevServerBuilder::new(tt, project_dir.into(), root_dir.into())
         .eager_compile(args.eager_compile)
         .hostname(args.hostname)
         .port(args.port)
@@ -357,7 +357,7 @@ pub async fn start_server(args: &DevArguments) -> Result<()> {
         );
 
     for entry in normalize_entries(&args.common.entries) {
-        server = server.entry_request(EntryRequest::Relative(entry))
+        server = server.entry_request(EntryRequest::Relative(entry.into()))
     }
 
     #[cfg(feature = "serializable")]
