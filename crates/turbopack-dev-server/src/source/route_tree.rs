@@ -278,7 +278,7 @@ impl RouteTree {
                 };
                 match base {
                     BaseSegment::Static(str) => {
-                        if &**str != segment {
+                        if **str != segment {
                             return Ok(Vc::cell(vec![]));
                         }
                     }

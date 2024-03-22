@@ -216,11 +216,9 @@ async fn build_internal(
                 EntryRequest::Relative(p) => {
                     Request::relative(Value::new(p.clone().into()), Default::default(), false)
                 }
-                EntryRequest::Module(m, p) => Request::module(
-                    m.clone().into(),
-                    Value::new(p.clone().into()),
-                    Default::default(),
-                ),
+                EntryRequest::Module(m, p) => {
+                    Request::module(m.clone(), Value::new(p.clone().into()), Default::default())
+                }
             })
         })
         .try_join()
