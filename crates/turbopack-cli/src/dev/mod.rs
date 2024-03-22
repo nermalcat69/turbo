@@ -285,12 +285,12 @@ async fn source(
         env,
         eager_compile,
         NodeEnv::Development.cell(),
-        browserslist_query,
+        browserslist_query.to_string(),
     );
     let viz = Vc::upcast(turbo_tasks_viz::TurboTasksSource::new(turbo_tasks.into()));
     let static_source = Vc::upcast(StaticAssetsContentSource::new(
-        String::new(),
-        project_path.join("public".to_string()),
+        Arc::default(),
+        project_path.join("public".to_string().into()),
     ));
     let main_source = CombinedContentSource::new(vec![static_source, web_source]);
     let introspect = Vc::upcast(
