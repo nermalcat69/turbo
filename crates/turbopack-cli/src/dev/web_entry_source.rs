@@ -75,7 +75,7 @@ pub async fn get_client_runtime_entries(
 
     runtime_entries.push(
         RuntimeEntry::Source(Vc::upcast(FileSource::new(embed_file_path(
-            "entry/bootstrap.ts".to_string(),
+            "entry/bootstrap.ts".to_string().into(),
         ))))
         .cell(),
     );
