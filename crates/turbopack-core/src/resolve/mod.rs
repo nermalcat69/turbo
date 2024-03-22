@@ -1156,7 +1156,7 @@ async fn find_package(
                 let root = &*root_vc.await?;
                 while lookup_path_value.is_inside_ref(root) {
                     for name in names.iter() {
-                        let fs_path = lookup_path.join(name.clone().into());
+                        let fs_path = lookup_path.join(name.clone());
                         if let Some(fs_path) = dir_exists(fs_path, &mut affecting_sources).await? {
                             let fs_path = fs_path.join(package_name.clone());
                             if let Some(fs_path) =
