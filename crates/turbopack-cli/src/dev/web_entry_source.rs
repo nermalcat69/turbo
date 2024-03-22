@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
 use turbo_tasks::{TryJoinIterExt, Value, Vc};
 use turbo_tasks_env::ProcessEnv;
@@ -68,7 +70,7 @@ pub async fn get_client_runtime_entries(
     // functions to be available.
     if let Some(request) = enable_react_refresh {
         runtime_entries
-            .push(RuntimeEntry::Request(request, project_path.join("_".to_string())).cell())
+            .push(RuntimeEntry::Request(request, project_path.join("_".to_string().into())).cell())
     };
 
     runtime_entries.push(
@@ -90,7 +92,7 @@ pub async fn create_web_entry_source(
     _env: Vc<Box<dyn ProcessEnv>>,
     eager_compile: bool,
     node_env: Vc<NodeEnv>,
-    browserslist_query: String,
+    browserslist_query: Arc<String>,
 ) -> Result<Vc<Box<dyn ContentSource>>> {
     let compile_time_info = get_client_compile_time_info(browserslist_query, node_env);
     let asset_context =
@@ -146,7 +148,7 @@ pub async fn create_web_entry_source(
         .await?;
 
     let entry_asset = Vc::upcast(DevHtmlAsset::new(
-        server_root.join("index.html".to_string()),
+        server_root.join("index.html".to_string().into()),
         entries,
     ));
 

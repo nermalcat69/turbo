@@ -73,7 +73,7 @@ impl GetContentSourceContent for TurboTasksSource {
     #[turbo_tasks::function]
     async fn get(
         self: Vc<Self>,
-        path: String,
+        path: Arc<String>,
         data: Value<ContentSourceData>,
     ) -> Result<Vc<ContentSourceContent>> {
         let this = self.await?;
