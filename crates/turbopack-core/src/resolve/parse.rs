@@ -56,7 +56,7 @@ fn split_off_query(raw: String) -> (Pattern, Vc<String>) {
     };
 
     (
-        Pattern::Constant(raw.to_string().into()),
+        Pattern::Constant(raw.to_string()),
         Vc::cell(format!("?{}", query)),
     )
 }
@@ -152,7 +152,7 @@ impl Request {
                         .captures(&r)
                         .and_then(|caps| caps.get(1).zip(caps.get(2)))
                     {
-                        let (path, query) = split_off_query(path.as_str().to_string().into());
+                        let (path, query) = split_off_query(path.as_str().to_string());
 
                         return Request::Module {
                             module: module.as_str().to_string().into(),
@@ -276,18 +276,18 @@ impl Request {
                 path,
                 query: _,
             } => {
-                let mut pat = Pattern::Constant(format!("./{module}").into());
+                let mut pat = Pattern::Constant(format!("./{module}"));
                 pat.push(path.clone());
                 // TODO add query
                 Self::parse(Value::new(pat))
             }
             Request::PackageInternal { path } => {
-                let mut pat = Pattern::Constant("./".to_string().into());
+                let mut pat = Pattern::Constant("./".to_string());
                 pat.push(path.clone());
                 Self::parse(Value::new(pat))
             }
             Request::Unknown { path } => {
-                let mut pat = Pattern::Constant("./".to_string().into());
+                let mut pat = Pattern::Constant("./".to_string());
                 pat.push(path.clone());
                 Self::parse(Value::new(pat))
             }

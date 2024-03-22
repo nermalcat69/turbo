@@ -404,7 +404,7 @@ fn node_file_trace<B: Backend + 'static>(
                 let before_start = Instant::now();
                 let workspace_fs: Vc<Box<dyn FileSystem>> = Vc::upcast(DiskFileSystem::new(
                     "workspace".to_string().into(),
-                    package_root.clone().into(),
+                    package_root.clone(),
                     vec![],
                 ));
                 let input_dir = workspace_fs.root();
@@ -413,11 +413,8 @@ fn node_file_trace<B: Backend + 'static>(
                 #[cfg(not(feature = "bench_against_node_nft"))]
                 let original_output = exec_node(package_root, input);
 
-                let output_fs = DiskFileSystem::new(
-                    "output".to_string().into(),
-                    directory.clone().into(),
-                    vec![],
-                );
+                let output_fs =
+                    DiskFileSystem::new("output".to_string().into(), directory.clone(), vec![]);
                 let output_dir = output_fs.root();
 
                 let source = FileSource::new(input);

@@ -1190,7 +1190,7 @@ async fn find_package(
                     }
                 }
                 for extension in &options.extensions {
-                    let package_file = package_dir.append(extension.clone().into());
+                    let package_file = package_dir.append(extension.clone());
                     if let Some(package_file) = exists(package_file, &mut affecting_sources).await?
                     {
                         packages.push(FindPackageItem::PackageFile(package_file));
@@ -1792,11 +1792,11 @@ async fn resolve_into_folder(
     // fall back to dir/index.[js,ts,...]
     let pattern = match &options_value.default_files[..] {
         [] => return Ok(ResolveResult::unresolveable().into()),
-        [file] => Pattern::Constant(format!("./{file}").into()),
+        [file] => Pattern::Constant(format!("./{file}")),
         files => Pattern::Alternatives(
             files
                 .iter()
-                .map(|file| Pattern::Constant(format!("./{file}").into()))
+                .map(|file| Pattern::Constant(format!("./{file}")))
                 .collect(),
         ),
     };
@@ -1844,7 +1844,7 @@ async fn resolve_relative_request(
         // Add the extensions as alternatives to the path
         // read_matches keeps the order of alternatives intact
         new_path.push(Pattern::Alternatives(
-            once(Pattern::Constant("".to_string().into()))
+            once(Pattern::Constant("".to_string()))
                 .chain(
                     options_value
                         .extensions
@@ -1987,7 +1987,7 @@ async fn apply_in_package(
             return Ok(Some(
                 resolve_internal(
                     package_path,
-                    Request::parse(Value::new(Pattern::Constant(value.to_string().into())))
+                    Request::parse(Value::new(Pattern::Constant(value.to_string())))
                         .with_query(query),
                     options,
                 )
@@ -2000,7 +2000,7 @@ async fn apply_in_package(
             severity: IssueSeverity::Error.cell(),
             file_path: *package_json_path,
             request_type: format!("alias field ({field})"),
-            request: Request::parse(Value::new(Pattern::Constant(request.to_string().into()))),
+            request: Request::parse(Value::new(Pattern::Constant(request.to_string()))),
             resolve_options: options,
             error_message: Some(format!("invalid alias field value: {}", value)),
             source: None,
