@@ -285,7 +285,7 @@ async fn source(
         env,
         eager_compile,
         NodeEnv::Development.cell(),
-        browserslist_query.to_string(),
+        browserslist_query,
     );
     let viz = Vc::upcast(turbo_tasks_viz::TurboTasksSource::new(turbo_tasks.into()));
     let static_source = Vc::upcast(StaticAssetsContentSource::new(
